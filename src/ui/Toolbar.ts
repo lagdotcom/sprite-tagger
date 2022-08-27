@@ -45,13 +45,13 @@ export default class Toolbar {
     this.width = document.createElement("input");
     this.width.type = "number";
     this.width.min = "1";
-    this.width.addEventListener("change", () => this.draw());
+    this.width.addEventListener("change", () => this.onChangeSize());
     this.container.append(this.width);
 
     this.height = document.createElement("input");
     this.height.type = "number";
     this.height.min = "1";
-    this.height.addEventListener("change", () => this.draw());
+    this.height.addEventListener("change", () => this.onChangeSize());
     this.container.append(this.height);
 
     this.imageWidth = NaN;
@@ -108,6 +108,15 @@ export default class Toolbar {
     this.ui.emit("tagLoaded", tag);
   }
 
+  onChangeSize() {
+    if (!this.tag) return;
+
+    this.tag.layout.width = this.width.valueAsNumber;
+    this.tag.layout.height = this.height.valueAsNumber;
+    this.ui.emit("tagLoaded", this.tag);
+    this.refresh.soon();
+  }
+
   draw() {
     this.size.innerText = `Size: ${this.imageWidth}x${this.imageHeight}`;
 
@@ -119,14 +128,10 @@ export default class Toolbar {
   saveTag() {
     if (!this.tagName || !this.tag) return;
 
-    const tag = this.tag;
-    tag.layout.width = this.width.valueAsNumber;
-    tag.layout.height = this.height.valueAsNumber;
-
     const f: FileSchema = {
       name: this.tagName,
       type: "sprite-tag",
-      data: new File([JSON.stringify(tag)], this.tagName, {
+      data: new File([JSON.stringify(this.tag)], this.tagName, {
         type: "application/json",
       }),
     };
