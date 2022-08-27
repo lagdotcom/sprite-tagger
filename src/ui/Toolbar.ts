@@ -1,5 +1,6 @@
 import { FileSchema } from "../db";
 import MainUI from "../MainUI";
+import Soon from "../Soon";
 import SpriteTag from "../SpriteTag";
 
 function getTagFromImage(name: string) {
@@ -14,12 +15,16 @@ export default class Toolbar {
   height: HTMLInputElement;
   save: HTMLButtonElement;
 
+  refresh: Soon;
+  img?: ImageBitmap;
   tag?: SpriteTag;
   tagName?: string;
   imageWidth: number;
   imageHeight: number;
 
   constructor(public ui: MainUI) {
+    this.refresh = new Soon("Toolbar", () => this.draw());
+
     this.container = document.createElement("div");
     this.container.className = "toolbar";
     ui.main.append(this.container);
@@ -40,13 +45,13 @@ export default class Toolbar {
     this.width = document.createElement("input");
     this.width.type = "number";
     this.width.min = "1";
-    this.width.addEventListener("change", () => this.redoSize());
+    this.width.addEventListener("change", () => this.draw());
     this.container.append(this.width);
 
     this.height = document.createElement("input");
     this.height.type = "number";
     this.height.min = "1";
-    this.height.addEventListener("change", () => this.redoSize());
+    this.height.addEventListener("change", () => this.draw());
     this.container.append(this.height);
 
     this.imageWidth = NaN;
@@ -68,6 +73,7 @@ export default class Toolbar {
         else
           return {
             file: name,
+            size: { width: 0, height: 0 },
             layout: { type: "grid", width: 1, height: 1 },
             tags: {},
             animations: {},
@@ -76,10 +82,16 @@ export default class Toolbar {
       .then((tag) => this.useTag(tag));
   }
 
-  useImage(img: HTMLImageElement) {
-    this.imageWidth = img.naturalWidth;
-    this.imageHeight = img.naturalHeight;
-    this.redoSize();
+  useImage(img: ImageBitmap) {
+    const { width, height } = img;
+    this.img = img;
+
+    this.imageWidth = width;
+    this.imageHeight = height;
+
+    if (this.tag) this.tag.size = { width, height };
+
+    this.refresh.soon();
   }
 
   useTag(tag: SpriteTag) {
@@ -87,10 +99,16 @@ export default class Toolbar {
     this.width.valueAsNumber = tag.layout.width;
     this.height.valueAsNumber = tag.layout.height;
 
-    this.redoSize();
+    if (this.img) {
+      const { width, height } = this.img;
+      this.tag.size = { width, height };
+    }
+
+    this.refresh.soon();
+    this.ui.emit("tagLoaded", tag);
   }
 
-  redoSize() {
+  draw() {
     this.size.innerText = `Size: ${this.imageWidth}x${this.imageHeight}`;
 
     const cols = this.imageWidth / this.width.valueAsNumber;

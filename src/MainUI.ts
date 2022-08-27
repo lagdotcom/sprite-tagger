@@ -13,6 +13,11 @@ export default class MainUI extends EventEmitter<AppEvent> {
   main: HTMLElement;
   nav: HTMLElement;
 
+  uploader: Uploader;
+  repository: RepositoryDisplay;
+  toolbar: Toolbar;
+  image: ImageViewer;
+
   constructor(public db: AppDB) {
     super();
 
@@ -24,9 +29,9 @@ export default class MainUI extends EventEmitter<AppEvent> {
     this.main = document.createElement("main");
     this.body.append(this.main);
 
-    new Uploader(this);
-    new RepositoryDisplay(this);
-    new Toolbar(this);
-    new ImageViewer(this);
+    this.uploader = new Uploader(this);
+    this.repository = new RepositoryDisplay(this);
+    this.toolbar = new Toolbar(this);
+    this.image = new ImageViewer(this);
   }
 }

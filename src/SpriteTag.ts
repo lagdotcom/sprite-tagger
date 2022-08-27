@@ -1,14 +1,10 @@
+import Rect from "./Rect";
+
 export type SpriteGridLayout = { type: "grid"; width: number; height: number };
 
 export type BoxType = "hit" | "hurt";
 
-export type BBox = {
-  x: number;
-  y: number;
-  width: number;
-  height: number;
-  type: BoxType;
-};
+export type BBox = Rect & { type: BoxType };
 
 export type Tag = {
   boxes: BBox[];
@@ -26,6 +22,7 @@ export type Animation = {
 
 type SpriteTag = {
   file: string;
+  size: { width: number; height: number };
   layout: SpriteGridLayout;
   tags: Record<string, Tag>;
   animations: Record<string, Animation>;

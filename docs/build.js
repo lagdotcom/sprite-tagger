@@ -207,35 +207,178 @@
   // src/MainUI.ts
   var import_eventemitter3 = __toESM(require_eventemitter3());
 
+  // src/DragListener.ts
+  var DragListener = class {
+    constructor(element, callback) {
+      this.element = element;
+      this.callback = callback;
+      this.active = false;
+      this.x = NaN;
+      this.y = NaN;
+      element.addEventListener("mousedown", this.down.bind(this));
+      element.addEventListener("mouseup", this.up.bind(this));
+      element.addEventListener("mousemove", this.move.bind(this));
+    }
+    down(e) {
+      this.active = true;
+      this.x = e.x;
+      this.y = e.y;
+    }
+    up() {
+      this.active = false;
+    }
+    move(e) {
+      if (this.active) {
+        const dx = e.x - this.x;
+        const dy = e.y - this.y;
+        this.callback(dx, dy);
+        this.x = e.x;
+        this.y = e.y;
+      }
+    }
+  };
+
+  // src/Soon.ts
+  var Soon = class {
+    constructor(name, fn) {
+      this.name = name;
+      this.fn = fn;
+    }
+    soon() {
+      if (!this.handle)
+        this.handle = requestAnimationFrame(() => {
+          this.handle = void 0;
+          this.fn();
+        });
+    }
+    cancel() {
+      if (this.handle) {
+        cancelAnimationFrame(this.handle);
+        this.handle = void 0;
+      }
+    }
+  };
+
+  // src/tools.ts
+  function clamp(n, min, max) {
+    return Math.max(Math.min(n, max), min);
+  }
+
   // src/ui/tools.ts
   function removeAllChildren(container) {
     while (container.childElementCount > 0)
       container.removeChild(container.children[0]);
+  }
+  function drawTextWithBG(ctx, text, x, y, stroke, fill, padding = 0) {
+    const m = ctx.measureText(text);
+    const mh = m.actualBoundingBoxAscent + m.actualBoundingBoxDescent + padding * 2;
+    const mw = m.actualBoundingBoxLeft + m.actualBoundingBoxRight + padding * 2;
+    ctx.fillStyle = fill;
+    ctx.fillRect(x, y, mw, mh);
+    ctx.strokeStyle = stroke;
+    ctx.strokeText(text, x + padding, y + m.actualBoundingBoxAscent + padding);
+  }
+
+  // src/logic.ts
+  function getSprites(tag) {
+    const { width, height } = tag.layout;
+    if (width < 8 || height < 8)
+      return [];
+    const sprites = [];
+    for (let r = 0, y = 0; y < tag.size.height; r++, y += height) {
+      for (let c = 0, x = 0; x < tag.size.width; c++, x += width) {
+        sprites.push({ id: `${c},${r}`, x, y, width, height });
+      }
+    }
+    return sprites;
   }
 
   // src/ui/ImageViewer.ts
   var ImageViewer = class {
     constructor(ui) {
       this.ui = ui;
-      this.container = document.createElement("div");
-      this.container.className = "image";
-      ui.main.append(this.container);
+      this.ox = 0;
+      this.oy = 0;
+      this.z = 1;
+      this.redraw = new Soon("ImageViewer", () => this.draw());
+      this.canvas = document.createElement("canvas");
+      this.canvas.className = "image";
+      this.canvas.style.imageRendering = "pixelated";
+      this.dragListener = new DragListener(
+        this.canvas,
+        (dx, dy) => this.onDrag(dx, dy)
+      );
+      this.canvas.addEventListener(
+        "wheel",
+        (e) => this.onZoom(e.deltaMode, e.deltaY)
+      );
+      ui.main.append(this.canvas);
+      const ctx = this.canvas.getContext("2d");
+      if (!ctx)
+        throw new Error("Could not get 2D context");
+      this.ctx = ctx;
       ui.on("open", (name) => this.show(name));
+      ui.on("tagLoaded", (tag) => this.useTag(tag));
+      window.addEventListener("resize", () => this.onResize());
+      this.onResize();
+    }
+    onDrag(dx, dy) {
+      this.ox += dx;
+      this.oy += dy;
+      this.redraw.soon();
+    }
+    onResize() {
+      this.canvas.width = this.canvas.clientWidth;
+      this.canvas.height = this.canvas.clientHeight;
+      this.redraw.soon();
+    }
+    onZoom(mode, dy) {
+      if (mode === WheelEvent.DOM_DELTA_PIXEL) {
+        const dz = dy / -500;
+        this.z = clamp(this.z + dz, 0.2, 3);
+        this.redraw.soon();
+      }
     }
     show(name) {
       void this.ui.db.get("files", name).then((f) => {
-        if (f?.type === "sprite") {
-          removeAllChildren(this.container);
-          const img = document.createElement("img");
-          this.container.append(img);
-          img.addEventListener("load", () => this.ui.emit("imageLoaded", img));
-          const reader = new FileReader();
-          reader.addEventListener("load", () => {
-            img.src = reader.result;
-          });
-          reader.readAsDataURL(f.data);
-        }
+        if (f?.type === "sprite")
+          void this.load(f.data);
       });
+    }
+    useTag(tag) {
+      this.tag = tag;
+      this.redraw.soon();
+    }
+    async load(blob) {
+      this.img = await createImageBitmap(blob);
+      this.ui.emit("imageLoaded", this.img);
+      this.ox = 0;
+      this.oy = 0;
+      this.z = 1;
+      this.redraw.soon();
+    }
+    transform(x, y) {
+      return [x * this.z + this.ox, y * this.z + this.oy];
+    }
+    transformSize(w, h) {
+      return [w * this.z, h * this.z];
+    }
+    draw() {
+      this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+      if (!this.img)
+        return;
+      const [tlx, tly] = this.transform(0, 0);
+      const [iw, ih] = this.transformSize(this.img.width, this.img.height);
+      this.ctx.drawImage(this.img, tlx, tly, iw, ih);
+      if (this.tag) {
+        for (const spr of getSprites(this.tag)) {
+          const [x, y] = this.transform(spr.x, spr.y);
+          const [w, h] = this.transformSize(spr.width, spr.height);
+          this.ctx.strokeStyle = "red";
+          this.ctx.strokeRect(x, y, w, h);
+          drawTextWithBG(this.ctx, spr.id, x, y, "white", "red", 4);
+        }
+      }
     }
   };
 
@@ -273,6 +416,7 @@
   var Toolbar = class {
     constructor(ui) {
       this.ui = ui;
+      this.refresh = new Soon("Toolbar", () => this.draw());
       this.container = document.createElement("div");
       this.container.className = "toolbar";
       ui.main.append(this.container);
@@ -289,12 +433,12 @@
       this.width = document.createElement("input");
       this.width.type = "number";
       this.width.min = "1";
-      this.width.addEventListener("change", () => this.redoSize());
+      this.width.addEventListener("change", () => this.draw());
       this.container.append(this.width);
       this.height = document.createElement("input");
       this.height.type = "number";
       this.height.min = "1";
-      this.height.addEventListener("change", () => this.redoSize());
+      this.height.addEventListener("change", () => this.draw());
       this.container.append(this.height);
       this.imageWidth = NaN;
       this.imageHeight = NaN;
@@ -310,6 +454,7 @@
         else
           return {
             file: name,
+            size: { width: 0, height: 0 },
             layout: { type: "grid", width: 1, height: 1 },
             tags: {},
             animations: {}
@@ -317,17 +462,26 @@
       }).then((tag) => this.useTag(tag));
     }
     useImage(img) {
-      this.imageWidth = img.naturalWidth;
-      this.imageHeight = img.naturalHeight;
-      this.redoSize();
+      const { width, height } = img;
+      this.img = img;
+      this.imageWidth = width;
+      this.imageHeight = height;
+      if (this.tag)
+        this.tag.size = { width, height };
+      this.refresh.soon();
     }
     useTag(tag) {
       this.tag = tag;
       this.width.valueAsNumber = tag.layout.width;
       this.height.valueAsNumber = tag.layout.height;
-      this.redoSize();
+      if (this.img) {
+        const { width, height } = this.img;
+        this.tag.size = { width, height };
+      }
+      this.refresh.soon();
+      this.ui.emit("tagLoaded", tag);
     }
-    redoSize() {
+    draw() {
       this.size.innerText = `Size: ${this.imageWidth}x${this.imageHeight}`;
       const cols = this.imageWidth / this.width.valueAsNumber;
       const rows = this.imageHeight / this.height.valueAsNumber;
@@ -398,10 +552,10 @@
       this.body.append(this.nav);
       this.main = document.createElement("main");
       this.body.append(this.main);
-      new Uploader(this);
-      new RepositoryDisplay(this);
-      new Toolbar(this);
-      new ImageViewer(this);
+      this.uploader = new Uploader(this);
+      this.repository = new RepositoryDisplay(this);
+      this.toolbar = new Toolbar(this);
+      this.image = new ImageViewer(this);
     }
   };
 
