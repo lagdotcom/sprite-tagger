@@ -10,18 +10,21 @@ export default class DragListener {
     this.x = NaN;
     this.y = NaN;
 
+    element.style.cursor = "grab";
     element.addEventListener("mousedown", this.down.bind(this));
     element.addEventListener("mouseup", this.up.bind(this));
     element.addEventListener("mousemove", this.move.bind(this));
   }
 
   down(e: MouseEvent) {
+    this.element.style.cursor = "grabbing";
     this.active = true;
     this.x = e.x;
     this.y = e.y;
   }
 
   up() {
+    this.element.style.cursor = "grab";
     this.active = false;
   }
 
