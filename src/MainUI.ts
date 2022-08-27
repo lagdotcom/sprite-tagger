@@ -7,6 +7,7 @@ import ImageViewer from "./ui/ImageViewer";
 import RepositoryDisplay from "./ui/RepositoryDisplay";
 import Toolbar from "./ui/Toolbar";
 import Uploader from "./ui/Uploader";
+import { make } from "./ui/tools";
 
 export default class MainUI extends EventEmitter<AppEvent> {
   body: HTMLElement;
@@ -23,10 +24,10 @@ export default class MainUI extends EventEmitter<AppEvent> {
 
     this.body = document.body;
 
-    this.nav = document.createElement("nav");
+    this.nav = make("nav");
     this.body.append(this.nav);
 
-    this.main = document.createElement("main");
+    this.main = make("main");
     this.body.append(this.main);
 
     this.uploader = new Uploader(this);

@@ -1,9 +1,10 @@
+import { drawTextWithBG, make } from "./tools";
+
 import DragListener from "../DragListener";
 import MainUI from "../MainUI";
 import Soon from "../Soon";
 import SpriteTag from "../SpriteTag";
 import { clamp } from "../tools";
-import { drawTextWithBG } from "./tools";
 import { getSprites } from "../logic";
 
 export default class ImageViewer {
@@ -23,9 +24,7 @@ export default class ImageViewer {
     this.z = 1;
     this.redraw = new Soon("ImageViewer", () => this.draw());
 
-    this.canvas = document.createElement("canvas");
-    this.canvas.className = "image";
-    this.canvas.style.imageRendering = "pixelated";
+    this.canvas = make("canvas", { className: "image" });
     this.dragListener = new DragListener(this.canvas, (dx, dy) =>
       this.onDrag(dx, dy)
     );

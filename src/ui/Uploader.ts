@@ -1,6 +1,7 @@
 import { FileSchema } from "../db";
 import FileType from "../FileType";
 import MainUI from "../MainUI";
+import { make } from "./tools";
 
 function getFileType(name: string, type: string): FileType | undefined {
   switch (type) {
@@ -14,11 +15,10 @@ export default class Uploader {
   input: HTMLInputElement;
 
   constructor(public ui: MainUI) {
-    this.container = document.createElement("div");
+    this.container = make("div");
     ui.nav.append(this.container);
 
-    this.input = document.createElement("input");
-    this.input.type = "file";
+    this.input = make("input", { type: "file" });
     this.container.append(this.input);
 
     this.input.addEventListener("change", this.addFiles.bind(this));

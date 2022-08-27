@@ -2,6 +2,8 @@ import { FileSchema } from "../db";
 import MainUI from "../MainUI";
 import Soon from "../Soon";
 import SpriteTag from "../SpriteTag";
+import { isInteger } from "../tools";
+import { make } from "./tools";
 
 function getTagFromImage(name: string) {
   return name + ".tag.json";
@@ -9,11 +11,12 @@ function getTagFromImage(name: string) {
 
 export default class Toolbar {
   container: HTMLDivElement;
-  size: HTMLDivElement;
-  tiles: HTMLDivElement;
+  save: HTMLButtonElement;
+  meta: HTMLDivElement;
+  size: HTMLSpanElement;
+  tiles: HTMLSpanElement;
   width: HTMLInputElement;
   height: HTMLInputElement;
-  save: HTMLButtonElement;
 
   refresh: Soon;
   img?: ImageBitmap;
@@ -25,34 +28,41 @@ export default class Toolbar {
   constructor(public ui: MainUI) {
     this.refresh = new Soon("Toolbar", () => this.draw());
 
-    this.container = document.createElement("div");
-    this.container.className = "toolbar";
+    this.container = make("div", { className: "toolbar" });
     ui.main.append(this.container);
 
-    this.save = document.createElement("button");
-    this.save.innerText = "Save";
+    this.save = make("button", { innerText: "Save" });
     this.save.addEventListener("click", () => this.saveTag());
     this.container.append(this.save);
 
-    this.size = document.createElement("div");
-    this.size.innerText = "Size: -";
-    this.container.append(this.size);
+    this.meta = make("div", { className: "toolbar-meta" });
+    this.container.append(this.meta);
 
-    this.tiles = document.createElement("div");
-    this.tiles.innerText = "Tiles: -";
-    this.container.append(this.tiles);
+    this.meta.append(make("span", { innerText: "Size:" }));
+    this.size = make("span", { innerText: "-" });
+    this.meta.append(this.size);
 
-    this.width = document.createElement("input");
-    this.width.type = "number";
-    this.width.min = "1";
+    this.meta.append(make("span", { innerText: "Tiles:" }));
+    this.tiles = make("span", { innerText: "-" });
+    this.meta.append(this.tiles);
+
+    this.meta.append(
+      make("label", { innerText: "Tile Width", htmlFor: "tile-width" })
+    );
+    this.width = make("input", { id: "tile-width", type: "number", min: "1" });
     this.width.addEventListener("change", () => this.onChangeSize());
-    this.container.append(this.width);
+    this.meta.append(this.width);
 
-    this.height = document.createElement("input");
-    this.height.type = "number";
-    this.height.min = "1";
+    this.meta.append(
+      make("label", { innerText: "Tile Height", htmlFor: "tile-height" })
+    );
+    this.height = make("input", {
+      id: "tile-height",
+      type: "number",
+      min: "1",
+    });
     this.height.addEventListener("change", () => this.onChangeSize());
-    this.container.append(this.height);
+    this.meta.append(this.height);
 
     this.imageWidth = NaN;
     this.imageHeight = NaN;
@@ -118,11 +128,13 @@ export default class Toolbar {
   }
 
   draw() {
-    this.size.innerText = `Size: ${this.imageWidth}x${this.imageHeight}`;
+    this.size.innerText = `${this.imageWidth}x${this.imageHeight}`;
 
     const cols = this.imageWidth / this.width.valueAsNumber;
     const rows = this.imageHeight / this.height.valueAsNumber;
-    this.tiles.innerText = `Tiles: ${cols}x${rows}`;
+    this.tiles.innerText = `${cols}x${rows}`;
+
+    this.tiles.style.color = isInteger(cols) && isInteger(rows) ? "" : "red";
   }
 
   saveTag() {

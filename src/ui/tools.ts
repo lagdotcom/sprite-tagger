@@ -23,3 +23,13 @@ export function drawTextWithBG(
   ctx.strokeStyle = stroke;
   ctx.strokeText(text, x + padding, y + m.actualBoundingBoxAscent + padding);
 }
+
+export function make<K extends keyof HTMLElementTagNameMap>(
+  tagName: K,
+  attributes: Partial<HTMLElementTagNameMap[K]> = {}
+): HTMLElementTagNameMap[K] {
+  const el = document.createElement(tagName);
+  Object.assign(el, attributes);
+
+  return el;
+}

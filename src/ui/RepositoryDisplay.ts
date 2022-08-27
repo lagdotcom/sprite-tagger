@@ -1,13 +1,13 @@
+import { make, removeAllChildren } from "./tools";
+
 import { FileSchema } from "../db";
 import MainUI from "../MainUI";
-import { removeAllChildren } from "./tools";
 
 export default class RepositoryDisplay {
   container: HTMLDivElement;
 
   constructor(public ui: MainUI) {
-    this.container = document.createElement("div");
-    this.container.className = "files";
+    this.container = make("div", { className: "files" });
     ui.nav.append(this.container);
 
     ui.on("fileAdded", this.refresh.bind(this));
@@ -22,8 +22,7 @@ export default class RepositoryDisplay {
   }
 
   getFile(f: FileSchema) {
-    const button = document.createElement("button");
-    button.innerText = f.name;
+    const button = make("button", { innerText: f.name });
     button.addEventListener("click", () => this.ui.emit("open", f.name));
 
     if (f.type !== "sprite") button.disabled = true;
