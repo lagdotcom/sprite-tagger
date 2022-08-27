@@ -364,19 +364,21 @@
       return [w * this.z, h * this.z];
     }
     draw() {
-      this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
-      if (!this.img)
+      const { ctx, img, tag } = this;
+      ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+      ctx.imageSmoothingEnabled = false;
+      if (!img)
         return;
       const [tlx, tly] = this.transform(0, 0);
-      const [iw, ih] = this.transformSize(this.img.width, this.img.height);
-      this.ctx.drawImage(this.img, tlx, tly, iw, ih);
-      if (this.tag) {
-        for (const spr of getSprites(this.tag)) {
+      const [iw, ih] = this.transformSize(img.width, img.height);
+      ctx.drawImage(img, tlx, tly, iw, ih);
+      if (tag) {
+        for (const spr of getSprites(tag)) {
           const [x, y] = this.transform(spr.x, spr.y);
           const [w, h] = this.transformSize(spr.width, spr.height);
-          this.ctx.strokeStyle = "red";
-          this.ctx.strokeRect(x, y, w, h);
-          drawTextWithBG(this.ctx, spr.id, x, y, "white", "red", 4);
+          ctx.strokeStyle = "red";
+          ctx.strokeRect(x, y, w, h);
+          drawTextWithBG(ctx, spr.id, x, y, "white", "red", 4);
         }
       }
     }
